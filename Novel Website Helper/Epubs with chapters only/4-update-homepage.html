@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <title>Step 4: Homepage Updater</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style> body { font-family: 'Jost', sans-serif; background-color: #111827; } .btn { background-color: #d946ef; } </style>
+</head>
+<body class="text-gray-200">
+    <div class="container mx-auto max-w-4xl p-8 space-y-8">
+        <header class="text-center">
+            <h1 class="text-4xl font-bold text-fuchsia-400">Tool 4: Homepage Updater</h1>
+            <p class="text-gray-400 mt-2">Adds a new novel to your main index.html file.</p>
+        </header>
+
+        <div class="bg-gray-900 p-8 rounded-lg border border-gray-700 space-y-6">
+            <div>
+                <label for="main-index-input" class="block mb-2 text-lg font-medium">1. Upload Your Current Homepage File</label>
+                <input type="file" id="main-index-input" accept=".html" class="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:font-semibold file:bg-fuchsia-100 file:text-fuchsia-700 hover:file:bg-fuchsia-200"/>
+            </div>
+
+            <fieldset class="border border-gray-700 p-4 rounded-lg">
+                <legend class="text-lg font-medium px-2">2. Enter New Novel Details</legend>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                     <div>
+                        <label for="novel-id" class="text-sm">Novel ID (folder name)</label>
+                        <input type="text" id="novel-id" placeholder="e.g., solo-leveling">
+                    </div>
+                     <div>
+                        <label for="novel-title" class="text-sm">Novel Title</label>
+                        <input type="text" id="novel-title" placeholder="e.g., Solo Leveling">
+                    </div>
+                     <div>
+                        <label for="cover-url" class="text-sm">Cover Image URL</label>
+                        <input type="url" id="cover-url" placeholder="https://...">
+                    </div>
+                     <div>
+                        <label for="novel-status" class="text-sm">Status</label>
+                        <input type="text" id="novel-status" value="Ongoing">
+                    </div>
+                     <div>
+                        <label for="chapter-count" class="text-sm">Chapter Count</label>
+                        <input type="number" id="chapter-count" placeholder="e.g., 150">
+                    </div>
+                </div>
+            </fieldset>
+            
+            <div>
+                 <button id="process-btn" class="btn w-full text-white font-semibold py-3 rounded-lg">3. Generate Updated Homepage</button>
+            </div>
+        </div>
+
+        <div id="output-container" class="text-center">
+            </div>
+    </div>
+
+<script>
+    const processBtn = document.getElementById('process-btn');
+    const outputContainer = document.getElementById('output-container');
+
+    processBtn.addEventListener('click', () => {
+        const indexFileInput = document.getElementById('main-index-input');
+        const novelId = document.getElementById('novel-id').value.trim();
+        const novelTitle = document.getElementById('novel-title').value.trim();
+        const coverUrl = document.getElementById('cover-url').value.trim();
+        const novelStatus = document.getElementById('novel-status').value.trim();
+        const chapterCount = document.getElementById('chapter-count').value.trim();
+        
+        const indexFile = indexFileInput.files[0];
+
+        if (!indexFile || !novelId || !novelTitle || !coverUrl || !novelStatus || !chapterCount) {
+            alert('Please fill in all fields and upload your index.html file.');
+            return;
+        }
+
+        outputContainer.innerHTML = '<p class="text-lg text-yellow-400">Updating homepage...</p>';
+
+        const reader = new FileReader();
+        reader.onload = e => {
+            const htmlString = e.target.result;
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlString, "text/html");
+
+            const libraryGrid = doc.querySelector('.library-grid');
+            if (!libraryGrid) {
+                outputContainer.innerHTML = '<p class="text-lg text-red-400">Error: Could not find the ".library-grid" section in the uploaded file.</p>';
+                return;
+            }
+
+            // Create the new card HTML
+            const newCardHTML = `
+        <a href="novels/${novelId}/index.html" class="novel-card">
+            <img src="${coverUrl}" alt="Cover Image">
+            <div class="card-overlay">
+                <span class="card-tag">${novelStatus}</span>
+                <h3 class="card-title">${novelTitle}</h3>
+                <p class="card-meta">${chapterCount} Chapters</p>
+            </div>
+        </a>`;
+
+            // Append the new card to the grid
+            libraryGrid.insertAdjacentHTML('beforeend', '\\n' + newCardHTML);
+
+            // Serialize the entire document back to a string
+            const finalHtml = '<!DOCTYPE html>\\n' + doc.documentElement.outerHTML;
+
+            // Create and trigger download for the updated index.html
+            const blob = new Blob([finalHtml], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'index.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            outputContainer.innerHTML = `<p class="text-lg text-green-400">Success! Your updated 'index.html' file has started downloading.</p>`;
+        };
+        reader.readAsText(indexFile);
+    });
+</script>
+</body>
+</html>

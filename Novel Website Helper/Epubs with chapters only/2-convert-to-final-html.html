@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <title>Step 2: Convert to Final HTML (ZIP)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style> body { font-family: 'Jost', sans-serif; background-color: #111827; } .btn { background-color: #10b981; } </style>
+</head>
+<body class="text-gray-200">
+    <div class="container mx-auto max-w-3xl p-8 space-y-8">
+        <header class="text-center">
+            <h1 class="text-4xl font-bold text-green-400">Tool 2: Text to Final HTML</h1>
+            <p class="text-gray-400 mt-2">Converts clean .txt files into a final ZIP of website chapter pages.</p>
+        </header>
+        <div class="bg-gray-900 p-8 rounded-lg border border-gray-700 space-y-4">
+            <div>
+                <label for="novelName" class="block mb-2 text-lg font-medium">Novel Name (for breadcrumbs and ZIP filename)</label>
+                <input type="text" id="novelName" placeholder="e.g., Return of the Mount Hua Sect" class="w-full bg-gray-700 p-2 rounded-md border border-gray-600">
+            </div>
+            <div>
+                <label for="txt-files-input" class="block mb-2 text-lg font-medium">1. Select Formatted .txt Files</label>
+                <input type="file" id="txt-files-input" multiple accept=".txt" class="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:font-semibold file:bg-green-100 file:text-green-700 hover:file:bg-green-200"/>
+            </div>
+            <div>
+                 <button id="process-btn" class="btn w-full text-white font-semibold py-3 rounded-lg">2. Generate and Download ZIP</button>
+            </div>
+        </div>
+        <div id="output-container" class="text-center"></div>
+    </div>
+
+<script>
+    const fileInput = document.getElementById('txt-files-input');
+    const processBtn = document.getElementById('process-btn');
+    const outputContainer = document.getElementById('output-container');
+    const novelNameInput = document.getElementById('novelName');
+
+    const chapterTemplate = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>%%TITLE%%</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Jost:wght@400;700&family=Lora:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../../style.css">
+</head>
+<body>
+    <button class="settings-toggle-btn" id="settings-toggle-btn">⚙️</button>
+
+    <div class="reader-header">
+        <a href="../index.html">%%BREADCRUMB_TITLE%%</a>
+        <span> > </span>
+        <span>%%BREADCRUMB_CHAPTER%%</span>
+    </div>
+    <main id="novel-content" class="reader-container">
+        <h1>%%CHAPTER_HEADING%%</h1>
+        %%CHAPTER_CONTENT%%
+    </main>
+    <div class="reader-footer">
+        <a href="%%PREV_LINK%%" class="button-secondary %%PREV_DISABLED%%">Previous</a>
+        <a href="%%NEXT_LINK%%" class="button-primary %%NEXT_DISABLED%%">Next</a>
+    </div>
+    <aside class="settings-panel" id="settings-panel">
+        <div class="setting-group"><h4>Font Family</h4><button data-font="Jost" class="font-btn">Jost</button><button data-font="Inter" class="font-btn">Inter</button><button data-font="Lora" class="font-btn">Lora</button></div>
+        <div class="setting-group"><h4>Font Size</h4><div class="number-input"><button id="decrease-font">-</button><span id="font-size-display">18</span><button id="increase-font">+</button></div></div>
+        <div class="setting-group"><h4>Line Height</h4><div class="number-input"><button id="decrease-leading">-</button><span id="leading-display">1.8</span><button id="increase-leading">+</button></div></div>
+    </aside>
+    <script src="../../../script.js"><\/script>
+</body>
+</html>`;
+
+    // The rest of the script is unchanged...
+    processBtn.addEventListener('click', () => {
+        const files = Array.from(fileInput.files).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+        const novelName = novelNameInput.value.trim() || 'My Novel';
+        if (files.length === 0) { alert('Please select .txt files first.'); return; }
+        outputContainer.innerHTML = '<p class="text-lg text-yellow-400">Generating HTML from .txt files...</p>';
+        const filePromises = files.map(file => {
+            return new Promise(resolve => {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const text = e.target.result; const lines = text.split('\n'); const title = lines.shift().trim() || "Untitled Chapter";
+                    while (lines.length > 0 && lines[0].trim() === '') { lines.shift(); }
+                    const bodyText = lines.join('\n');
+                    const htmlContent = bodyText.split(/\n\s*\n/).map(p => { if (!p.trim()) return ''; let p_ = p.trim().replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>').replace(/\n/g, '<br>'); return `<p>${p_}</p>`; }).join('\n');
+                    const outputFilename = file.name.replace(/\.txt$/, '.html');
+                    resolve({ name: outputFilename, title: title, content: htmlContent });
+                };
+                reader.readAsText(file);
+            });
+        });
+        Promise.all(filePromises).then(results => {
+            outputContainer.innerHTML = '<p class="text-lg text-blue-400">Bundling final HTML files into a ZIP...</p>';
+            const zip = new JSZip();
+            results.forEach((result, index) => {
+                const prev = results[index - 1]; const next = results[index + 1];
+                let finalHtml = chapterTemplate.replace(/%%TITLE%%/g, `${novelName} - ${result.title}`).replace(/%%BREADCRUMB_TITLE%%/g, novelName).replace(/%%BREADCRUMB_CHAPTER%%/g, result.title).replace(/%%CHAPTER_HEADING%%/g, result.title).replace(/%%CHAPTER_CONTENT%%/g, result.content).replace('%%PREV_LINK%%', prev ? prev.name : '#').replace('%%PREV_DISABLED%%', prev ? '' : 'disabled').replace('%%NEXT_LINK%%', next ? next.name : '#').replace('%%NEXT_DISABLED%%', next ? '' : 'disabled');
+                zip.file(result.name, finalHtml);
+            });
+            zip.generateAsync({ type: "blob" }).then(function(content) {
+                const safeName = novelName.replace(/[<>:"/\\|?*]/g, '-') || 'final-chapters'; const zipFilename = `${safeName}.zip`;
+                const url = URL.createObjectURL(content); const a = document.createElement('a'); a.href = url; a.download = zipFilename;
+                document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+                outputContainer.innerHTML = `<p class="text-lg text-green-400">Success! Your download for '${zipFilename}' has started.</p>`;
+            });
+        });
+    });
+</script>
+</body>
+</html>

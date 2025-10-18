@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <title>Step 3: TOC Page Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style> body { font-family: 'Jost', sans-serif; background-color: #111827; } .btn { background-color: #3b82f6; } </style>
+</head>
+<body class="text-gray-200">
+    <div class="container mx-auto max-w-4xl p-8 space-y-8">
+        <header class="text-center">
+            <h1 class="text-4xl font-bold text-blue-400">Tool 3: Table of Contents (TOC) Generator</h1>
+            <p class="text-gray-400 mt-2">Creates the main index.html page for your novel.</p>
+        </header>
+
+        <div class="bg-gray-900 p-8 rounded-lg border border-gray-700 space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label for="novelTitle" class="block mb-2 font-medium">Novel Title</label>
+                    <input type="text" id="novelTitle" placeholder="e.g., Return of the Mount Hua Sect" class="w-full bg-gray-700 p-2 rounded-md border border-gray-600">
+                </div>
+                <div>
+                    <label for="coverURL" class="block mb-2 font-medium">Cover Image URL</label>
+                    <input type="url" id="coverURL" placeholder="https://..." class="w-full bg-gray-700 p-2 rounded-md border border-gray-600">
+                </div>
+            </div>
+            <div>
+                <label for="genreTags" class="block mb-2 font-medium">Genre Tags (comma-separated)</label>
+                <input type="text" id="genreTags" placeholder="Action, Fantasy, Adventure" class="w-full bg-gray-700 p-2 rounded-md border border-gray-600">
+            </div>
+            <div>
+                <label for="description" class="block mb-2 font-medium">Description / Synopsis</label>
+                <textarea id="description" rows="4" class="w-full bg-gray-700 p-2 rounded-md border border-gray-600"></textarea>
+            </div>
+            <div>
+                <label for="chapter-files-input" class="block mb-2 font-medium">Select All Final Chapter .html Files</label>
+                <input type="file" id="chapter-files-input" multiple accept=".html" class="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200"/>
+            </div>
+            <div>
+                 <button id="process-btn" class="btn w-full text-white font-semibold py-3 rounded-lg">Generate TOC Page (index.html)</button>
+            </div>
+        </div>
+
+        <div id="output-container" class="text-center">
+            </div>
+    </div>
+
+<script>
+    const processBtn = document.getElementById('process-btn');
+    const outputContainer = document.getElementById('output-container');
+
+    const tocTemplate = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>%%NOVEL_TITLE%%</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Jost:wght@400;700&family=Lora:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <a href="../../index.html">My Series</a>
+    </nav>
+
+    <main class="content-wrapper">
+        <div class="series-layout">
+            <aside class="series-sidebar">
+                <img src="%%COVER_IMAGE_URL%%" alt="Cover of %%NOVEL_TITLE%%">
+                <a href="%%START_READING_LINK%%" class="button-primary">Start Reading</a>
+            </aside>
+
+            <section class="series-content">
+                <span class="content-tag">Ongoing</span>
+                <h1>%%NOVEL_TITLE%%</h1>
+                <div class="genre-tags">
+                    %%GENRE_TAGS%%
+                </div>
+                <p class="series-description">%%DESCRIPTION%%</p>
+
+                <div class="chapter-list-container">
+                    <h3>Episodes</h3>
+                    <ul class="chapter-list">
+                        %%CHAPTER_LIST_ITEMS%%
+                    </ul>
+                </div>
+            </section>
+        </div>
+    </main>
+</body>
+</html>`;
+
+    processBtn.addEventListener('click', () => {
+        const novelTitle = document.getElementById('novelTitle').value.trim();
+        const coverURL = document.getElementById('coverURL').value.trim();
+        const genreTags = document.getElementById('genreTags').value.trim();
+        const description = document.getElementById('description').value.trim();
+        const chapterFiles = Array.from(document.getElementById('chapter-files-input').files);
+        
+        if (!novelTitle || !coverURL || !description || chapterFiles.length === 0) {
+            alert('Please fill in all fields and select chapter files.');
+            return;
+        }
+        
+        outputContainer.innerHTML = '<p class="text-lg text-yellow-400">Generating TOC page...</p>';
+        
+        chapterFiles.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+
+        const chapterListItems = chapterFiles.map(file => {
+            const chapterTitle = file.name.replace('.html', '');
+            const filePath = `chapters/${file.name}`;
+            return `<li><a href="${filePath}"><span class="chapter-title">${chapterTitle}</span><span class="chapter-meta">Oct 18, 2025</span></a></li>`;
+        }).join(''); // <<< THE FIX IS HERE. Changed from .join('\n') to .join('')
+
+        const genreTagsHTML = genreTags.split(',').map(tag => `<span>${tag.trim()}</span>`).join('');
+        const firstChapterLink = chapterFiles.length > 0 ? `chapters/${chapterFiles[0].name}` : '#';
+
+        let finalHtml = tocTemplate
+            .replace(/%%NOVEL_TITLE%%/g, novelTitle)
+            .replace(/%%COVER_IMAGE_URL%%/g, coverURL)
+            .replace(/%%START_READING_LINK%%/g, firstChapterLink)
+            .replace(/%%GENRE_TAGS%%/g, genreTagsHTML)
+            .replace(/%%DESCRIPTION%%/g, description)
+            .replace(/%%CHAPTER_LIST_ITEMS%%/g, chapterListItems);
+
+        const blob = new Blob([finalHtml], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'index.html';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        outputContainer.innerHTML = `<p class="text-lg text-green-400">Success! Your 'index.html' file has started downloading.</p>`;
+    });
+
+</script>
+</body>
+</html>

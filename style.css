@@ -81,7 +81,7 @@ body {
     }
     
     .series-sidebar img {
-        width: 200px; /* Make cover smaller on mobile */
+        width: 200px;
         margin: 0 auto;
     }
 
@@ -93,19 +93,16 @@ body {
         right: 0;
         border-radius: 0;
         border-left: 1px solid var(--border-dark);
-        /* Hide the panel off-screen by default */
         transform: translateX(100%);
         transition: transform 0.3s ease-in-out;
     }
 
-    /* This class will be added by JavaScript to show the panel */
     .settings-panel.active {
         transform: translateX(0);
     }
     
-    /* Add a button to open the settings */
     .settings-toggle-btn {
-        display: block; /* Make the button visible */
+        display: block;
         position: fixed;
         top: 1rem;
         right: 1rem;
@@ -118,5 +115,10 @@ body {
         cursor: pointer;
         font-size: 1.5rem;
         line-height: 1;
+    }
+
+    /* NEW: Adds left and right padding to the chapter text */
+    .reader-container {
+        padding: 0 1rem;
     }
 }

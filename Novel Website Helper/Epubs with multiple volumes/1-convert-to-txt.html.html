@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <title>Step 1: Convert to TXT (ZIP Bundle)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style> body { font-family: 'Jost', sans-serif; background-color: #111827; } .btn { background-color: #8b5cf6; } </style>
+</head>
+<body class="text-gray-200">
+    <div class="container mx-auto max-w-3xl p-8 space-y-8">
+        <header class="text-center">
+            <h1 class="text-4xl font-bold text-purple-400">Tool 1: (X)HTML to Formatted Text</h1>
+            <p class="text-gray-400 mt-2">Converts chapter files into a single downloadable ZIP, with .txt files named by their chapter title.</p>
+        </header>
+        <div class="bg-gray-900 p-8 rounded-lg border border-gray-700 space-y-4">
+            <div>
+                <label for="html-files-input" class="block mb-2 text-lg font-medium">1. Select Original Chapter Files</label>
+                <input type="file" id="html-files-input" multiple accept=".html,.xhtml" class="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:font-semibold file:bg-purple-100 file:text-purple-700 hover:file:bg-purple-200"/>
+            </div>
+            <div>
+                 <button id="process-btn" class="btn w-full text-white font-semibold py-3 rounded-lg">2. Convert and Download ZIP</button>
+            </div>
+        </div>
+        <div id="output-container" class="text-center">
+            </div>
+    </div>
+
+<script>
+    const fileInput = document.getElementById('html-files-input');
+    const processBtn = document.getElementById('process-btn');
+    const outputContainer = document.getElementById('output-container');
+
+    function findChapterTitle(doc) {
+        const titleRegexes = [
+            /(chapter|episode|ch)\s*(\d+)\s*[:-]?\s*(.*)/i,
+            /prologue/i,
+        ];
+        const elementsToSearch = doc.querySelectorAll('h1, h2, h3, h4, p, title');
+        for (const regex of titleRegexes) {
+            for (const el of elementsToSearch) {
+                const text = el.textContent.trim();
+                if (text && text.match(regex)) {
+                    return text.replace(/\s*\n\s*/g, " ").replace(/\s+/g, ' ').trim();
+                }
+            }
+        }
+        return null;
+    }
+
+    processBtn.addEventListener('click', () => {
+        const files = Array.from(fileInput.files);
+        if (files.length === 0) {
+            alert('Please select files first.');
+            return;
+        }
+        outputContainer.innerHTML = '<p class="text-lg text-yellow-400">Processing... This may take a moment for many files.</p>';
+        
+        const filePromises = files.map(file => {
+            return new Promise(resolve => {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const htmlString = e.target.result;
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(htmlString, "text/xml");
+
+                    const title = findChapterTitle(doc);
+                    const body = doc.querySelector('body');
+
+                    if (!body) {
+                        resolve({ originalName: file.name, title: null, content: "ERROR: Could not parse file." });
+                        return;
+                    }
+                    
+                    // *** THE FIX: Use textContent for clean paragraphs and newlines ***
+                    // This simpler method correctly handles paragraphs and avoids the '\\n' string bug.
+                    let bodyText = body.textContent || "";
+                    bodyText = bodyText.trim().replace(/\n\s*\n/g, '\n\n'); // Standardize paragraph breaks
+
+                    const finalContent = `${title || 'Unknown Title'}\n\n${bodyText}`;
+
+                    resolve({ originalName: file.name, title: title, content: finalContent });
+                };
+                reader.readAsText(file);
+            });
+        });
+
+        Promise.all(filePromises).then(results => {
+            outputContainer.innerHTML = '<p class="text-lg text-blue-400">Bundling files into a ZIP...</p>';
+            const zip = new JSZip();
+
+            results.forEach(result => {
+                let fileName;
+                if (result.title) {
+                    const sanitizedTitle = result.title.replace(/[<>:"/\\|?*]/g, '-').substring(0, 100);
+                    fileName = `${sanitizedTitle}.txt`;
+                } else {
+                    fileName = result.originalName.replace(/\.[^/.]+$/, "") + ".txt";
+                }
+                zip.file(fileName, result.content);
+            });
+
+            zip.generateAsync({ type: "blob" }).then(function(content) {
+                const url = URL.createObjectURL(content);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = "converted-chapters.zip";
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                outputContainer.innerHTML = `<p class="text-lg text-green-400">Success! Your download for 'converted-chapters.zip' has started.</p>`;
+            });
+        });
+    });
+</script>
+</body>
+</html>
